@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>五子棋游戏</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #d1e0b8; /* 森林绿 */
+            color: #4a5f45; /* 深森林绿 */
+        }
+
+        .square {
+            background: #f0f0f0;
+            border: 1px solid #999;
+            float: left;
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 24px;
+            height: 24px;
+            margin-right: -1px;
+            margin-top: -1px;
+            padding: 0;
+            text-align: center;
+            width: 24px;
+            transition: transform 0.1s; /* 动画效果 */
+        }
+
+        .square:hover {
+            transform: scale(1.05);
+            background: #e0e0e0;
+        }
+
+        .board-row:after {
+            clear: both;
+            content: '';
+            display: table;
+        }
+
+        .status {
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .game {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-board {
+            margin-bottom: 20px;
+            background-color: #c5d3c1; /* 淡森林绿 */
+            border: 2px solid #8daa89; /* 森林边框 */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* 阴影效果 */
+            width: 360px; /* 15 squares * 24px */
+        }
+
+        .board-row {
+            display: flex;
+        }
+
+        .board {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .game-info {
+            font-size: 14px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .game-info li {
+            margin-bottom: 5px;
+        }
+
+        button {
+            padding: 5px 10px;
+            background-color: #8daa89; /* 森林按钮背景 */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #f0f0f0;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #6c8b6a;
+        }
+
+        /* 深色棋子颜色 */
+        .x {
+            color: #a94c4c; /* 深色 X，类似烧焦的木色 */
+        }
+
+        .o {
+            color: #4c7c7c; /* 深色 O，类似森林的深绿色 */
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script async src="https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react?dev",
+        "react-dom/client": "https://esm.sh/react-dom/client?dev"
+      }
+    }
+</script>
+<script type="text/babel" data-type="module">
+    import React, { StrictMode } from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    function Square({ value, onSquareClick }) {
+      return (
+        <button className={`square ${value === 'X' ? 'x' : value === 'O' ? 'o' : ''}`} onClick={onSquareClick}>
+          {value}
+        </button>
+      );
+    }
+
+    function Board({ xIsNext, squares, onPlay }) {
+      function handleClick(i) {
+        if (calculateWinner(squares) || squares[i]) {
+          return;
+        }
+        const nextSquares = squares.slice();
+        if (xIsNext) {
+          nextSquares[i] = 'X';
+        } else {
+          nextSquares[i] = 'O';
+        }
+        onPlay(nextSquares);
+      }
+
+      const winner = calculateWinner(squares);
+      let status;
+      if (winner) {
+        status = 'Winner: ' + winner;
+      } else {
+        status = 'Next player: ' + (xIsNext ? 'X' : 'O');
+      }
+
+      return (
+        <>
+          <div className="status">{status}</div>
+          <div className="board">
+            {Array(15).fill().map((_, rowIdx) => (
+              <div key={rowIdx} className="board-row">
+                {Array(15).fill().map((_, colIdx) => (
+                  <Square
+                    key={colIdx}
+                    value={squares[rowIdx * 15 + colIdx]}
+                    onSquareClick={() => handleClick(rowIdx * 15 + colIdx)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    let App = function Game() {
+      const [history, setHistory] = React.useState([Array(225).fill(null)]);
+      const [currentMove, setCurrentMove] = React.useState(0);
+      const xIsNext = currentMove % 2 === 0;
+      const currentSquares = history[currentMove];
+
+      function handlePlay(nextSquares) {
+        const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+        setHistory(nextHistory);
+        setCurrentMove(nextHistory.length - 1);
+      }
+
+      function jumpTo(nextMove) {
+        setCurrentMove(nextMove);
+      }
+
+      const moves = history.map((squares, move) => {
+        let description;
+        if (move > 0) {
+          description = 'Go to move #' + move;
+        } else {
+          description = 'Go to game start';
+        }
+        return (
+          <li key={move}>
+            <button onClick={() => jumpTo(move)}>{description}</button>
+          </li>
+        );
+      });
+
+      return (
+        <div className="game">
+          <div className="game-board">
+            <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+          </div>
+          <div className="game-info">
+            <ol>{moves}</ol>
+          </div>
+        </div>
+      );
+    }
+
+    function calculateWinner(squares) {
+      const lines = [];
+      for (let i = 0; i < 15; i++) {
+        for (let j = 0; j < 15; j++) {
+          lines.push([i * 15 + j, (i + 1) * 15 + j, (i + 2) * 15 + j, (i + 3) * 15 + j, (i + 4) * 15 + j]);
+          lines.push([j * 15 + i, j * 15 + (i + 1), j * 15 + (i + 2), j * 15 + (i + 3), j * 15 + (i + 4)]);
+        }
+      }
+      for (let i = 0; i < 13; i++) {
+        for (let j = 0; j < 13; j++) {
+          lines.push([i * 15 + j, (i + 1) * 15 + (j + 1), (i + 2) * 15 + (j + 2), (i + 3) * 15 + (j + 3), (i + 4) * 15 + (j + 4)]);
+          lines.push([(i + 1) * 15 + j, (i + 2) * 15 + (j + 1), (i + 3) * 15 + (j + 2), (i + 4) * 15 + (j + 3), (i + 5) * 15 + (j + 4)]);
+        }
+      }
+      for (let i = 0; i < 15; i++) {
+        lines.push([i, i + 15, i + 30, i + 60, i + 90]);
+        lines.push([14 - i, 14 - i + 15, 14 - i + 30, 14 - i + 60, 14 - i + 90]);
+      }
+      for (let i = 0; i < 15; i++) {
+        lines.push([i + 14, i + 29, i + 54, i + 79, i + 104]);
+        lines.push([14 - i + 15, 14 - i + 30, 14 - i + 54, 14 - i + 79, 14 - i + 104]);
+      }
+      for (let i = 0; i < 15; i++) {
+        lines.push([i + 13, i + 28, i + 53, i + 78, i + 103]);
+        lines.push([14 - i + 13, 14 - i + 28, 14 - i + 53, 14 - i + 78, 14 - i + 103]);
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const [a, b, c, d, e] = lines[i];
+        if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c] && squares[a] === squares[d] && squares[a] === squares[e]) {
+          return squares[a];
+        }
+      }
+      return null;
+    }
+
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(
+      <StrictMode>
+        <App />
+      </StrictMode>
+    );
+</script>
+</body>
+</html>
